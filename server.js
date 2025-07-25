@@ -9,7 +9,7 @@ import cors from 'cors';
 import { Server } from 'socket.io';
 
 // Game से related controller functions import करते हैं
-import { joinRoom, handleMove, leaveRoom } from './src/controllers/gameController.js';
+import { joinRoom, handleMove, leaveRoom  ,startGame} from './src/controllers/gameController.js';
 
 // Express app initialize करते हैं
 const app = express();
@@ -28,11 +28,16 @@ io.on('connection', socket => {
   console.log('New socket:', socket.id); // socket ID log करते हैं
 
   // जब user room बनाता है (createRoom)
-  socket.on('createRoom', callback => joinRoom(io, socket, callback));
+  // socket.on('createRoom', callback => joinRoom(io, socket, callback));
+  socket.on('createRoom', (data, callback) => joinRoom(io, socket, data, callback));
 
+  socket.on('joinRoom', (data, callback) => joinRoom(io, socket, data, callback));
   // जब user किसी room को join करता है
-  socket.on('joinRoom', (roomId, callback) => joinRoom(io, socket, callback));
+  // socket.on('joinRoom', (roomId, callback) => joinRoom(io, socket, callback));
 
+  //  game STart 
+  // socket.on('start-game', ()=> )
+    socket.on('start-game', data => startGame(io, socket, data));
   // जब कोई player अपनी चाल चलता है
   socket.on('makeMove', data => handleMove(io, socket, data));
 
@@ -42,4 +47,4 @@ io.on('connection', socket => {
 
 // Server को port 3000 (या environment के दिए हुए port) पर चलाते हैं
 const PORT = process.env.PORT || 3000;
-httpServer.listen(PORT, () => console.log(`Server running on ${PORT}`));
+httpServer.listen(PORT, '0.0.0.0', () => console.log(`Server running on ${PORT}`));

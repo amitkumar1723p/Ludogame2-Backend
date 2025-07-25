@@ -1,71 +1,132 @@
-// Unique ID बनाने के लिए UUID package import किया है
-import { v4 as uuidv4 } from 'uuid';
-
-// Room Manager class को import कर रहे हैं जो room को manage करता है (create, join, remove)
-import { RoomManager } from '../models/roomModel.js';
+// RoomManager को import कर रहे हैं — जो room बनाने, जोड़ने, हटाने का काम करता है
+import { RoomManager } from '../modals/roomModel.js';
 
 
+// 🔹 जब कोई client (player) game में connect होता है
+const joinRoom = (io, socket, { roomId, isNew, maxPlayers }, callback) => {
 
-
-
-const joinRoom = (io, socket, callback) => {
-  // callback के अंदर से roomId और isNew (flag: नया room है या नहीं) निकालते हैं
-  const { roomId, isNew } = callback?.data || {};
   let room;
+   console.log("Join Room Data start")
+  console.log("roomId", roomId)
+  console.log("isNew", isNew)
+  console.log("maxPlayers", maxPlayers)
+   console.log("Join Room Data end")
+  
 
   if (isNew) {
-    // अगर client ने नया room बनाने के लिए request किया है
-    room = RoomManager.createRoom(socket.id); // नया room बनाएं और current user को host बनाएं
-    console.log(`Room ${room.id} created by ${socket.id}`);
+     
+    // 🔸 नया room बनाना है — player host होगा
+    room = RoomManager.createRoom(socket.id, maxPlayers || 4);
+    console.log(room, "new Room Create ho gya hai")
   } else {
-    // अगर client किसी existing room को join कर रहा है
-    room = RoomManager.addPlayer(roomId, socket.id); // roomId के हिसाब से player को room में जोड़ें
-    if (!room) return callback({ error: 'Room not found or full' }); // अगर room नहीं मिला या full है
-    console.log(`${socket.id} joined Room ${roomId}`);
+    // 🔸 Existing room में player को जोड़ना है
+    room = RoomManager.addPlayer(roomId, socket.id);
+
+    console.log(room, "Romm mai koi Join huva hai")
+    // अगर room नहीं मिला या full है
+    if (!room) {
+      return callback({ error: 'Room not found or already full' });
+    }
   }
 
-  socket.join(room.id); // socket.io के through socket को room में officially जोड़ते हैं
+  // इस socket को उस room में officially जोड़ दो
+  socket.join(room.id);
 
-  // पूरे room को update कर देते हैं (broadcast करते हैं सभी players को)
-  io.to(room.id).emit('roomUpdate', room);
+  // 🔸 सभी players को room का latest status भेजो
+  io.to(room.id).emit('roomUpdate', {
+    roomId: room.id,                  // Room ID
+    players: room.players,            // कौन-कौन players हैं
+    currentTurn: room.currentTurn,    // अभी किसकी turn है
+    maxPlayers: room.maxPlayers       // max कितने players allowed हैं
+  });
 
-  // callback के ज़रिए client को success message और room की जानकारी भेजते हैं
-  callback({ success: true, room });
+  // 🔸 Frontend को successful join का जवाब
+  callback({ success: true, roomId: room.id });
 };
 
 
+
+// 🔹 जब कोई player move करता है (जैसे dice चलाना, piece move करना etc.)
 const handleMove = (io, socket, { roomId, move }) => {
-  const room = RoomManager.getRoom(roomId); // room को find करते हैं ID से
-  if (!room) return; // अगर room नहीं मिला तो function वहीं रोक देते हैं
+  const room = RoomManager.getRoom(roomId);   // उस room को find करो
+  if (!room) return;                          // अगर नहीं मिला, तो ignore करो
 
-  room.moves.push(move); // move को room की moves list में जोड़ते हैं
+  // 🔸 सिर्फ वही player move कर सकता है जिसका turn है
+  if (socket.id !== room.currentTurn) return;
 
-  // currentTurn को toggle करते हैं: अगर 1 था तो 2, और 2 था तो 1
-  room.currentTurn = 3 - room.currentTurn;
+  // 🔸 move को history में add करो (कौन player और क्या move)
+  room.moves.push({ by: socket.id, move });
 
-  // move हो जाने के बाद सभी users को updated move, turn और पूरी move history भेजते हैं
-  io.to(roomId).emit('moveMade', {
-    move,                         // अभी की move
-    currentTurn: room.currentTurn, // अगला कौन खेलेगा
-    moves: room.moves,             // सारी moves अब तक की
+  // 🔸 सभी players को यह move बता दो
+  io.to(room.id).emit('moveMade', {
+    by: socket.id,          // किसने move किया
+    move,                   // क्या move किया
+    moves: room.moves       // पूरी move history
+  });
+
+  // 🔸 turn अब अगले player को दे दो
+  room.advanceTurn();
+
+  // 🔸 सभी players को बताओ कि अब किसकी turn है
+  io.to(room.id).emit('turnUpdate', {
+    currentTurn: room.currentTurn
   });
 };
 
 
+
+// 🔹 जब कोई player disconnect हो जाता है या बाहर निकलता है
 const leaveRoom = (io, socket) => {
-  // Player को remove करते हैं और उसका room return होता है
+  // उस player को room से remove करो
   const room = RoomManager.removePlayer(socket.id);
 
+  // अगर वो किसी room में था तो सभी को बता दो
   if (room) {
-    // अगर room मिला, तो सभी को notify करते हैं कि player left हो गया
-    io.to(room.id).emit('playerLeft', room);
+    io.to(room.id).emit('playerLeft', {
+      players: room.players,          // updated players list
+      currentTurn: room.currentTurn   // अब किसकी turn है
+    });
   }
 };
 
 
-// सभी functions को export कर रहे हैं ताकि दूसरे modules (जैसे server.js) में use हो सकें
-module.exports = {
-  joinRoom,
-  handleMove,
-  leaveRoom
-};
+//  Start Game 
+const startGame = async (io, socket, { roomId, move }) => {
+  try {
+    // 1. Room data fetch karo
+    const room = await RoomManager.getRoom(roomId);
+    console.log(room, "room")
+    // 2. Check karo kya players ready hain
+     if(!room){
+      
+socket.emit('error', { message: 'Romm Avaliable nahi hai phel room crate karo' });
+return
+     }
+    if (room?.players?.length < 2) {
+      socket.emit('error', { message: 'कम से कम 2 players चाहिए!' });
+      return;
+    }
+
+
+    // 3. Room state update karo (game started)
+    // room.isGameStarted = true;
+    // await RoomManager.updateRoom(roomId, { isGameStarted: true });
+
+     console.log(room  ,"aab game start Hogya hai")
+      // 4. Sab players ko broadcast karo
+        io.to(roomId).emit('game-started', {
+            players: room.players,
+            roomId,
+            message: 'Game शुरू हो गया!',
+        });
+              console.log(`Game started in room ${roomId}`);
+
+  } catch (error) {
+   console.error('Error starting game:', error);
+        socket.emit('error', { message: 'Game start failed!' });
+  }
+
+}
+
+// 🔚 बाकी files से import करने के लिए export कर रहे हैं
+export { joinRoom, handleMove, leaveRoom, startGame };
