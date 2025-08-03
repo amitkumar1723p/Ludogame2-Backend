@@ -3,24 +3,24 @@ import { RoomManager } from '../modals/roomModel.js';
 
 
 // 🔹 जब कोई client (player) game में connect होता है
-const joinRoom = (io, socket, { roomId, isNew, maxPlayers }, callback) => {
+const joinRoom = (io, socket, { roomId, isNew, maxPlayers, PlayerName }, callback) => {
 
   let room;
-   console.log("Join Room Data start")
+  console.log("Join Room Data start")
   console.log("roomId", roomId)
   console.log("isNew", isNew)
   console.log("maxPlayers", maxPlayers)
-   console.log("Join Room Data end")
-  
+  console.log("Join Room Data end")
+
 
   if (isNew) {
-     
+
     // 🔸 नया room बनाना है — player host होगा
-    room = RoomManager.createRoom(socket.id, maxPlayers || 4);
+    room = RoomManager.createRoom(socket.id, maxPlayers || 4, PlayerName);
     console.log(room, "new Room Create ho gya hai")
   } else {
     // 🔸 Existing room में player को जोड़ना है
-    room = RoomManager.addPlayer(roomId, socket.id);
+    room = RoomManager.addPlayer(roomId, socket.id, PlayerName);
 
     console.log(room, "Romm mai koi Join huva hai")
     // अगर room नहीं मिला या full है
@@ -97,11 +97,11 @@ const startGame = async (io, socket, { roomId, move }) => {
     const room = await RoomManager.getRoom(roomId);
     console.log(room, "room")
     // 2. Check karo kya players ready hain
-     if(!room){
-      
-socket.emit('error', { message: 'Romm Avaliable nahi hai phel room crate karo' });
-return
-     }
+    if (!room) {
+
+      socket.emit('error', { message: 'Romm Avaliable nahi hai phel room crate karo' });
+      return
+    }
     if (room?.players?.length < 2) {
       socket.emit('error', { message: 'कम से कम 2 players चाहिए!' });
       return;
@@ -112,21 +112,84 @@ return
     // room.isGameStarted = true;
     // await RoomManager.updateRoom(roomId, { isGameStarted: true });
 
-     console.log(room  ,"aab game start Hogya hai")
-      // 4. Sab players ko broadcast karo
-        io.to(roomId).emit('game-started', {
-            players: room.players,
-            roomId,
-            message: 'Game शुरू हो गया!',
-        });
-              console.log(`Game started in room ${roomId}`);
+    console.log(room, "aab game start Hogya hai")
+    // 4. Sab players ko broadcast karo
+    io.to(roomId).emit('game-started', {
+      players: room.players,
+      roomId,
+      message: 'Game शुरू हो गया!',
+    });
+    console.log(`Game started in room ${roomId}`);
 
   } catch (error) {
-   console.error('Error starting game:', error);
-        socket.emit('error', { message: 'Game start failed!' });
+    console.error('Error starting game:', error);
+    socket.emit('error', { message: 'Game start failed!' });
   }
 
 }
 
+
+
+// 🔹 जब कोई client refresh ke baad game me wapas aata hai
+const rejoinRoom = (io, socket, { roomId, playerId }) => {
+  // 1. Room ko fetch karo
+  const room = RoomManager.getRoom(roomId);
+
+  // 2. Agar room exist nahi karta toh error bhejo
+  if (!room) {
+    socket.emit('error', { message: 'Room exist nahi karta ya expire ho gaya' });
+    return;
+  }
+
+  // 3. Agar player room me nahi hai, toh usse add karo
+  const alreadyPresent = room.players.some(p => p.PlayerSoketId === playerId);
+  if (!alreadyPresent) {
+    room.players.push({ PlayerSoketId: playerId, PlayerName: "Rejoined" });
+  }
+
+
+  // 4. Current socket ko room me join karwao (socket.io ka join)
+  socket.join(roomId);
+
+  // 5. Room ka latest status sabko emit karo
+  io.to(roomId).emit('roomUpdate', {
+    roomId: room.id,
+    players: room.players,
+    currentTurn: room.currentTurn,
+    maxPlayers: room.maxPlayers
+  });
+
+  // 6. Agar game already start ho chuka hai (moves exist karein)
+  if (room.moves.length > 0) {
+    socket.emit('game-started', {
+      players: room.players,
+      roomId: room.id,
+      message: 'Game already chalu hai — reconnect ho gaya!',
+    });
+  }
+
+  console.log(`🔁 Player ${playerId} rejoined room ${roomId}`);
+};
+
+
+
+const diceRolled = (io, socket, { roomId, playerNo,   PlayerSoketId,diceNo }) => {
+
+        console.log(`🎲 Player ${playerNo} rolled dice = ${diceNo} in room ${roomId}`);
+
+    const room = RoomManager.getRoom(roomId);   // उस room को find करो
+      if (!room) {
+        console.log('❌ Room not found:', roomId);
+        return;
+      }
+
+      // ✅ Broadcast dice number to all players in room
+      io.to(roomId).emit('diceRolled', {
+        playerNo,    // Position (e.g. 1 or 2)
+        diceNo  ,  // Rolled dice number
+        PlayerSoketId
+      });
+}
+
 // 🔚 बाकी files से import करने के लिए export कर रहे हैं
-export { joinRoom, handleMove, leaveRoom, startGame };
+export { joinRoom, handleMove, leaveRoom, startGame, rejoinRoom };

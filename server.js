@@ -9,7 +9,7 @@ import cors from 'cors';
 import { Server } from 'socket.io';
 
 // Game से related controller functions import करते हैं
-import { joinRoom, handleMove, leaveRoom  ,startGame} from './src/controllers/gameController.js';
+import { joinRoom, handleMove, leaveRoom  ,startGame, rejoinRoom} from './src/controllers/gameController.js';
 
 // Express app initialize करते हैं
 const app = express();
@@ -41,8 +41,18 @@ io.on('connection', socket => {
   // जब कोई player अपनी चाल चलता है
   socket.on('makeMove', data => handleMove(io, socket, data));
 
+
+// 🔁 Rejoin-room socket event — jab user app refresh karke wapas aaye
+socket.on('rejoin-room', data => rejoinRoom(io, socket, data));
+
   // जब कोई user disconnect (leave) करता है
   socket.on('disconnect', () => leaveRoom(io, socket));
+
+
+
+    // जब कोई user disconnect (leave) करता है
+  // socket.on('diceRolled', () => leaveRoom(io, socket));
+  
 });
 
 // Server को port 3000 (या environment के दिए हुए port) पर चलाते हैं
