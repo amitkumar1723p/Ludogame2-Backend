@@ -142,9 +142,9 @@ const rejoinRoom = (io, socket, { roomId, playerId }) => {
   }
 
   // 3. Agar player room me nahi hai, toh usse add karo
-  const alreadyPresent = room.players.some(p => p.PlayerSoketId === playerId);
+  const alreadyPresent = room.players.some(p => p.PlayerSocketId === playerId);
   if (!alreadyPresent) {
-    room.players.push({ PlayerSoketId: playerId, PlayerName: "Rejoined" });
+    room.players.push({ PlayerSocketId: playerId, PlayerName: "Rejoined" });
   }
 
 
@@ -173,7 +173,7 @@ const rejoinRoom = (io, socket, { roomId, playerId }) => {
 
 
 
-const diceRolled = (io, socket, { roomId, playerNo,   PlayerSoketId,diceNo }) => {
+const diceRolled = (io, socket, { roomId, playerNo,   PlayerSocketId,diceNo }) => {
 
         console.log(`🎲 Player ${playerNo} rolled dice = ${diceNo} in room ${roomId}`);
 
@@ -187,9 +187,9 @@ const diceRolled = (io, socket, { roomId, playerNo,   PlayerSoketId,diceNo }) =>
       io.to(roomId).emit('diceRolled', {
         playerNo,    // Position (e.g. 1 or 2)
         diceNo  ,  // Rolled dice number
-        PlayerSoketId
+        PlayerSocketId
       });
 }
 
 // 🔚 बाकी files से import करने के लिए export कर रहे हैं
-export { joinRoom, handleMove, leaveRoom, startGame, rejoinRoom };
+export { joinRoom, handleMove, leaveRoom, startGame, rejoinRoom , diceRolled  };

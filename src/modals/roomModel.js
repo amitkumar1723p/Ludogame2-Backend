@@ -5,7 +5,7 @@ class Room {
     this.id = Math.random().toString(36).substr(2, 8);
 
     // 🔹 Players list में सबसे पहले host जुड़ता है
-    this.players = [{PlayerSoketId:hostSocketId ,PlayerName ,host:true ,position: 1 }];
+    this.players = [{PlayerSocketId:hostSocketId ,PlayerName ,host:true ,position: 1 }];
 
     // 🔹 Room में कितने players allowed हैं (default: 4)
     this.maxPlayers = maxPlayers;
@@ -22,7 +22,7 @@ class Room {
 
   // 🔸 अभी जिसकी turn है, उसका socket ID return करो
   get currentTurn() {
-    return this.players[this.currentTurnIndex].PlayerSoketId;
+    return this.players[this.currentTurnIndex].PlayerSocketId;
   }
 
   // 🔸 Turn को अगले player पर rotate करो
@@ -52,7 +52,7 @@ class RoomManager {
 
     if (room.players.length >= room.maxPlayers) return null; // room full
   const nextPosition = room.players.length + 1;  // ✅ Automatically 2, 3, 4...
-    room.players.push({ PlayerSoketId: playerId, PlayerName, host:false  ,   position: nextPosition});              // player को जोड़ो
+    room.players.push({ PlayerSocketId: playerId, PlayerName, host:false  ,   position: nextPosition});              // player को जोड़ो
     return room;
   }
 
@@ -66,7 +66,7 @@ class RoomManager {
 static removePlayer(playerId) {
   for (const roomId in rooms) {
     const room = rooms[roomId];
-    const idx = room.players.findIndex(p => p.PlayerSoketId === playerId); // ✅ Change
+    const idx = room.players.findIndex(p => p.PlayerSocketId === playerId); // ✅ Change
 
     if (idx > -1) {
       room.players.splice(idx, 1); // ✅ Remove player

@@ -9,7 +9,7 @@ import cors from 'cors';
 import { Server } from 'socket.io';
 
 // Game से related controller functions import करते हैं
-import { joinRoom, handleMove, leaveRoom  ,startGame, rejoinRoom} from './src/controllers/gameController.js';
+import { joinRoom, handleMove, leaveRoom  ,startGame, rejoinRoom, diceRolled} from './src/controllers/gameController.js';
 
 // Express app initialize करते हैं
 const app = express();
@@ -48,10 +48,8 @@ socket.on('rejoin-room', data => rejoinRoom(io, socket, data));
   // जब कोई user disconnect (leave) करता है
   socket.on('disconnect', () => leaveRoom(io, socket));
 
-
-
     // जब कोई user disconnect (leave) करता है
-  // socket.on('diceRolled', () => leaveRoom(io, socket));
+  socket.on('diceRolled', data  => diceRolled(io, socket ,data));
   
 });
 
