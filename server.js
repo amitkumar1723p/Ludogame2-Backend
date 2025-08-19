@@ -9,7 +9,7 @@ import cors from 'cors';
 import { Server } from 'socket.io';
 
 // Game से related controller functions import करते हैं
-import { joinRoom, handleMove, leaveRoom  ,startGame, rejoinRoom, diceRolled} from './src/controllers/gameController.js';
+import { joinRoom,  leaveRoom  ,startGame, rejoinRoom, diceRolled, updateNextTurn , enablePileSelection , enableCellSelection ,pileEnableFromPocket , handleForwardThunk} from './src/controllers/gameController.js';
 
 // Express app initialize करते हैं
 const app = express();
@@ -21,8 +21,15 @@ app.use(cors());
 const httpServer = createServer(app);
 
 // Socket.IO server बनाते हैं और cross-origin को allow करते हैं
-const io = new Server(httpServer, { cors: { origin: '*' } });
+// const io = new Server(httpServer, { cors: { origin: '*' } });
 
+
+
+const io = new Server(httpServer, { 
+  cors: { origin: '*' },
+  pingTimeout: 60000,   // 60 sec tak wait karega
+  pingInterval: 25000   // 25 sec me ek ping bhejega
+});
 // जब कोई नया client (user) connect होता है
 io.on('connection', socket => {
   console.log('New socket:', socket.id); // socket ID log करते हैं
@@ -39,7 +46,7 @@ io.on('connection', socket => {
   // socket.on('start-game', ()=> )
     socket.on('start-game', data => startGame(io, socket, data));
   // जब कोई player अपनी चाल चलता है
-  socket.on('makeMove', data => handleMove(io, socket, data));
+  // socket.on('makeMove', data => handleMove(io, socket, data));
 
 
 // 🔁 Rejoin-room socket event — jab user app refresh karke wapas aaye
@@ -49,7 +56,15 @@ socket.on('rejoin-room', data => rejoinRoom(io, socket, data));
   socket.on('disconnect', () => leaveRoom(io, socket));
 
     // जब कोई user disconnect (leave) करता है
-  socket.on('diceRolled', data  => diceRolled(io, socket ,data));
+  socket.on('diceRolled', (data, callback)  => diceRolled(io, socket ,data ,callback));
+  //  socket.on('createRoom', (data, callback) => joinRoom(io, socket, data, callback));00
+
+// ⏭️ Next turn socket listener
+socket.on('nextTurn', (data) => updateNextTurn(io, socket, data));
+socket.on('enablePileSelection', (data) => enablePileSelection(io, socket, data));
+socket.on('enableCellSelection', (data ) => enableCellSelection(io, socket, data));
+socket.on('PileEnableFromPocket', (data) => pileEnableFromPocket(io, socket, data));
+socket.on('handleForwardThunk', (data) => handleForwardThunk(io, socket, data));
   
 });
 

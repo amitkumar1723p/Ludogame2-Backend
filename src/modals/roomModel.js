@@ -11,24 +11,17 @@ class Room {
     this.maxPlayers = maxPlayers;
 
     // 🔹 अभी किसकी turn है — उसका index track कर रहे हैं
-    this.currentTurnIndex = 0;
+    // this.currentTurnIndex = 0;
 
     // 🔹 अब तक के सभी moves को track करने के लिए list
-    this.moves = [];
+    // this.moves = [];
     
      
       
   }
 
-  // 🔸 अभी जिसकी turn है, उसका socket ID return करो
-  get currentTurn() {
-    return this.players[this.currentTurnIndex].PlayerSocketId;
-  }
-
-  // 🔸 Turn को अगले player पर rotate करो
-  advanceTurn() {
-    this.currentTurnIndex = (this.currentTurnIndex + 1) % this.players.length;
-  }
+ 
+  
 }
 
 // 🔹 Global object — सभी active game rooms यहाँ store होंगे
