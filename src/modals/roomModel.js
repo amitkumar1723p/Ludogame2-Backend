@@ -53,7 +53,7 @@ class RoomManager {
   static getRoom(roomId) {
     return rooms[roomId];
   }
-
+  
   //  Abi is ki jarurat nahi hai 
   // ✅ अगर कोई player leave करता है, तो handle करो
 static removePlayer(playerId) {
@@ -62,24 +62,22 @@ static removePlayer(playerId) {
     const idx = room.players.findIndex(p => p.PlayerSocketId === playerId); // ✅ Change
 
     if (idx > -1) {
-      room.players.splice(idx, 1); // ✅ Remove player
-
-      if (room.players.length === 0) {
-        delete rooms[roomId];
-        return null;
-      }
-
-      if (idx <= room.currentTurnIndex) {
-        room.currentTurnIndex = Math.max(0, room.currentTurnIndex - 1);
-      }
-
-      return room;
+   let [RemovePlayerData]=   room.players.splice(idx, 1); // ✅ Remove player
+      return {room ,RemovePlayerData};
     }
   }
 
   return null;
 }
 
+
+
+ static  deleteRoom(roomId){
+      if (rooms[roomId]) {
+    delete rooms[roomId];
+    console.log(`🗑️ Room deleted: ${roomId}`);
+  }
+ }
 }
 
 // 🔚 RoomManager को export कर रहे हैं — ताकि controller में use हो सके

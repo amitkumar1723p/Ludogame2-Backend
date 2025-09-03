@@ -53,7 +53,7 @@ io.on('connection', socket => {
 socket.on('rejoin-room', data => rejoinRoom(io, socket, data));
 
   // जब कोई user disconnect (leave) करता है
-  socket.on('disconnect', () => leaveRoom(io, socket));
+  socket.on('leaveRoom', (data) => leaveRoom(io, socket ,data));
 
     // जब कोई user disconnect (leave) करता है
   socket.on('diceRolled', (data, callback)  => diceRolled(io, socket ,data ,callback));
