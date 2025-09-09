@@ -65,6 +65,11 @@ socket.on('enablePileSelection', (data) => enablePileSelection(io, socket, data)
 socket.on('enableCellSelection', (data ) => enableCellSelection(io, socket, data));
 socket.on('PileEnableFromPocket', (data) => pileEnableFromPocket(io, socket, data));
 socket.on('handleForwardThunk', (data) => handleForwardThunk(io, socket, data));
+  socket.on('disconnecting', (data) => leaveRoom(io, socket ,data));
+  // socket.on('disconnect', (data, callback)  =>{
+ 
+  //     console.log("❌ Player disconnected:", socket.id);
+  // });
   
 });
 

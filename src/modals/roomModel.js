@@ -82,3 +82,4 @@ static removePlayer(playerId) {
 
 // 🔚 RoomManager को export कर रहे हैं — ताकि controller में use हो सके
 export { RoomManager };
+ 

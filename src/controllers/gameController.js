@@ -4,6 +4,7 @@ import { RoomManager } from '../modals/roomModel.js';
 
 // 🔹 जब कोई client (player) game में connect होता है
 const joinRoom = (io, socket, { roomId, isNew, maxPlayers, PlayerName }, callback) => {
+  console.log()
 
   let room;
 
@@ -25,7 +26,7 @@ const joinRoom = (io, socket, { roomId, isNew, maxPlayers, PlayerName }, callbac
 
   // इस socket को उस room में officially जोड़ दो
   socket.join(room.id);
-
+  socket.roomId = room.id;
   // 🔸 सभी players को room का latest status भेजो
   io.to(room.id).emit('roomUpdate', {
     roomId: room.id,                  // Room ID
@@ -44,10 +45,29 @@ const joinRoom = (io, socket, { roomId, isNew, maxPlayers, PlayerName }, callbac
 
 // 🔹 जब कोई player disconnect हो जाता है या बाहर निकलता है
 const leaveRoom = async (io, socket, { roomId }) => {
- console.log(roomId ,"roomid")
-  let room = await RoomManager.getRoom(roomId);
-   console.log(room ,"room")
-    
+
+  let UserroomId;
+  if (!roomId) {
+    const rooms = [...socket.rooms];
+    const roomIds = rooms.filter(r => r !== socket.id); // ✅ socket.id hatao
+    const myroomId = roomIds[0]; // ✅ actual roomId/ ✅ actual roomId
+
+    UserroomId = myroomId
+
+  } else {
+    UserroomId = roomId
+  }
+
+
+
+
+
+
+
+
+  let room = await RoomManager.getRoom(UserroomId);
+
+
 
 
   if (!room) {
@@ -58,9 +78,9 @@ const leaveRoom = async (io, socket, { roomId }) => {
 
   // उस player को room से remove करो
   let { room: RomData, RemovePlayerData } = RoomManager.removePlayer(socket.id) || {};
-   console.log(RomData ,"RomData")
-     
-  
+  console.log(RomData, "RomData")
+
+
   if (!RomData) {
     socket.emit('error', { message: 'Room not found or empty after player left' });
     return;
@@ -79,7 +99,9 @@ const leaveRoom = async (io, socket, { roomId }) => {
     return;
   }
 
-
+  if (RomData?.players?.length == 0) {
+    return
+  }
 
   const hasHost = RomData?.players?.some(p => p.host === true);
   // अगर host गया तो नया host assign करो
@@ -93,12 +115,19 @@ const leaveRoom = async (io, socket, { roomId }) => {
   io.to(RomData.id).emit('playerLeft', {
     currentPlayers: RomData.players,          // updated players list
     message: "एक player game छोड़ गया",
-    removePlayer:RemovePlayerData
+    removePlayer: RemovePlayerData
   });
 
   socket.leave(RomData.id);
 
 };
+
+
+
+
+
+
+
 
 
 //  Start Game 
@@ -119,9 +148,18 @@ const startGame = async (io, socket, { roomId, move }) => {
     }
 
 
-    // 3. Room state update karo (game started)
-    // room.isGameStarted = true;
-    // await RoomManager.updateRoom(roomId, { isGameStarted: true });
+
+    // agar only two player hai  toh seccond player ki postion ko third karna hai
+
+    if (room.players.length === 2) {
+      room.players = room.players.map(player => {
+        if (player.position === 2) {
+          return { ...player, position: 3 }; // ✅ position update
+        }
+        return player;
+      });
+    }
+
 
 
     // 4. Sab players ko broadcast karo
@@ -196,12 +234,7 @@ const diceRolled = (io, socket, { roomId, playerNo, PlayerSocketId, diceNo }) =>
     return;
   }
 
-  // // ✅ Broadcast dice number to all players in room
-  // io.to(roomId).emit('diceRolled', {
-  //   playerNo,    // Position (e.g. 1 or 2)
-  //   diceNo  ,  // Rolled dice number
-  //   PlayerSocketId
-  // });
+
 
   // ✅ Broadcast dice rolling animation first
   io.to(roomId).emit('diceRolling', {
