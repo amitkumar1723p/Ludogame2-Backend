@@ -17,6 +17,15 @@ const app = express();
 // CORS middleware apply करते हैं (हर जगह से access की इजाज़त)
 app.use(cors());
 
+// ✅ Test GET API route
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Backend is running!',
+    timestamp: new Date()
+  });
+});
+
 // HTTP server बनाते हैं Express app से
 const httpServer = createServer(app);
 

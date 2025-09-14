@@ -1,0 +1,44 @@
+# Workflow ka naam
+name: Deploy Ludo Backend to EC2
+
+# Kab ye workflow chalega
+# Yahan specify kiya hai: sirf 'main' branch me push hone par
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    # Ye workflow GitHub ke hosted ubuntu runner pe chalega
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Repository ka latest code checkout karo
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: SSH ke through EC2 me connect karke commands run karo
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          # EC2 ke IP ko GitHub Secrets se le rahe hain
+          host: ${{ secrets.EC2_HOST }}
+          # EC2 username, usually 'ubuntu' for Ubuntu AMI
+          username: ${{ secrets.EC2_USER }}
+          # Private key content (from GitHub secret)
+          key: ${{ secrets.EC2_KEY }}
+          # Commands jo EC2 me run karni hai
+          script: |
+            # EC2 me project folder me jao
+            cd /home/ubuntu/Ludogame2-Backend
+            
+            # GitHub se latest 'main' branch pull karo
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            # Node modules install karo (agar new package add hua ho)
+            npm install
+
+            # Backend restart karo using PM2 (process manager)
+            npx pm2 restart all || npx pm2 start server.js --name "ludo-server"
