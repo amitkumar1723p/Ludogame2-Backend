@@ -21,7 +21,7 @@ app.use(cors());
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'success',
-    message: 'Backend is running!',
+    message: 'new Backend is running!',
     timestamp: new Date()
   });
 });

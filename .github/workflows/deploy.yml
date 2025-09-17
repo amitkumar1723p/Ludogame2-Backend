@@ -1,44 +1,44 @@
-# Workflow ka naam
-name: Deploy Ludo Backend to EC2
+# ===========================
+# Workflow: Deploy Ludo Backend to EC2
+# ===========================
 
-# Kab ye workflow chalega
-# Yahan specify kiya hai: sirf 'main' branch me push hone par
+# Jab bhi 'main' branch me push hoti hai tab ye workflow chalega
 on:
   push:
     branches: [ main ]
 
 jobs:
   deploy:
-    # Ye workflow GitHub ke hosted ubuntu runner pe chalega
+    # Ye job GitHub ke hosted ubuntu server (runner) par chalegi
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Repository ka latest code checkout karo
+      # Step 1: Repo ka latest code checkout karo
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # Step 2: SSH ke through EC2 me connect karke commands run karo
+      # Step 2: SSH ke through :contentReference[oaicite:0]{index=0} instance me connect karke commands run karo
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v0.1.10
         with:
-          # EC2 ke IP ko GitHub Secrets se le rahe hain
+          # EC2 public IP (GitHub Secrets me stored)
           host: ${{ secrets.EC2_HOST }}
-          # EC2 username, usually 'ubuntu' for Ubuntu AMI
+          # EC2 username (usually 'ubuntu' for Ubuntu AMI)
           username: ${{ secrets.EC2_USER }}
-          # Private key content (from GitHub secret)
+          # EC2 private key ka content (GitHub Secret me saved)
           key: ${{ secrets.EC2_KEY }}
-          # Commands jo EC2 me run karni hai
+          # Ye commands EC2 par remotely run hongi
           script: |
-            # EC2 me project folder me jao
+            # Project folder me jao
             cd /home/ubuntu/Ludogame2-Backend
-            
-            # GitHub se latest 'main' branch pull karo
+
+            # Latest code pull karo 'main' branch se
             git fetch origin
             git checkout main
             git pull origin main
 
-            # Node modules install karo (agar new package add hua ho)
+            # Node packages install/update karo
             npm install
 
-            # Backend restart karo using PM2 (process manager)
+            # Server restart karo using :contentReference[oaicite:1]{index=1} (agar pehle se running ho to restart, warna start)
             npx pm2 restart all || npx pm2 start server.js --name "ludo-server"
