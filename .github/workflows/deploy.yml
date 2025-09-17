@@ -99,12 +99,12 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          envs: ENV_CONTENT
+          envs: TEST
           script: |
             cd /home/ubuntu/Ludogame2-Backend
 
             # ✅ create/update .env file from secret
-            echo "${ENV_CONTENT}" > .env
+            echo "${TEST}" > .env
 
             # build new image
             docker build -t ludo-server:latest .
