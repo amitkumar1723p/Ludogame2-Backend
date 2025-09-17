@@ -1,44 +1,122 @@
-# ===========================
-# Workflow: Deploy Ludo Backend to EC2
-# ===========================
+# # # ===========================
+# # # Workflow: Deploy Ludo Backend to EC2
+# # # ===========================
 
-# Jab bhi 'main' branch me push hoti hai tab ye workflow chalega
+# # # Jab bhi 'main' branch me push hoti hai tab ye workflow chalega
+# # on:
+# #   push:
+# #     branches: [ main ]
+
+# # jobs:
+# #   deploy:
+# #     # Ye job GitHub ke hosted ubuntu server (runner) par chalegi
+# #     runs-on: ubuntu-latest
+
+# #     steps:
+# #       # Step 1: Repo ka latest code checkout karo
+# #       - name: Checkout code
+# #         uses: actions/checkout@v3
+
+# #       # Step 2: SSH ke through :contentReference[oaicite:0]{index=0} instance me connect karke commands run karo
+# #       - name: Deploy to EC2
+# #         uses: appleboy/ssh-action@v0.1.10
+# #         with:
+# #           # EC2 public IP (GitHub Secrets me stored)
+# #           host: ${{ secrets.EC2_HOST }}
+# #           # EC2 username (usually 'ubuntu' for Ubuntu AMI)
+# #           username: ${{ secrets.EC2_USER }}
+# #           # EC2 private key ka content (GitHub Secret me saved)
+# #           key: ${{ secrets.EC2_KEY }}
+# #           # Ye commands EC2 par remotely run hongi
+# #           script: |
+# #             # Project folder me jao
+# #             cd /home/ubuntu/Ludogame2-Backend
+
+# #             # Latest code pull karo 'main' branch se
+# #             git fetch origin
+# #             git checkout main
+# #             git pull origin main
+
+# #             # Node packages install/update karo
+# #             npm install
+
+# #             # Server restart karo using :contentReference[oaicite:1]{index=1} (agar pehle se running ho to restart, warna start)
+# #             npx pm2 restart all || npx pm2 start server.js --name "ludo-server"
+
+# name: Docker Deploy to EC2
+
+# on:
+#   push:
+#     branches: [main]
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
+
+#       - name: Deploy to EC2 (build & run docker)
+#         uses: appleboy/ssh-action@v0.1.10
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USER }}
+#           key: ${{ secrets.EC2_KEY }}
+#           script: |
+#             cd /home/ubuntu/Ludogame2-Backend
+
+#             # build new image
+#             docker build -t ludo-server:latest .
+
+#             # stop & remove old container
+#             docker stop ludo-server || true
+#             docker rm ludo-server || true
+
+#             # run new container with restart policy and env-file (create .env earlier on server)
+#             docker run -d --name ludo-server --restart unless-stopped -p 3000:3000 --env-file /home/ubuntu/Ludogame2-Backend/.env ludo-server:latest
+
+#             # optional: cleanup unused images to free disk
+#             docker image prune -a -f
+
+name: Docker Deploy to EC2
+
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
-    # Ye job GitHub ke hosted ubuntu server (runner) par chalegi
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Repo ka latest code checkout karo
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v3
 
-      # Step 2: SSH ke through :contentReference[oaicite:0]{index=0} instance me connect karke commands run karo
-      - name: Deploy to EC2
+      - name: Deploy to EC2 (build & run docker)
         uses: appleboy/ssh-action@v0.1.10
         with:
-          # EC2 public IP (GitHub Secrets me stored)
           host: ${{ secrets.EC2_HOST }}
-          # EC2 username (usually 'ubuntu' for Ubuntu AMI)
           username: ${{ secrets.EC2_USER }}
-          # EC2 private key ka content (GitHub Secret me saved)
           key: ${{ secrets.EC2_KEY }}
-          # Ye commands EC2 par remotely run hongi
+          envs: ENV_CONTENT
           script: |
-            # Project folder me jao
             cd /home/ubuntu/Ludogame2-Backend
 
-            # Latest code pull karo 'main' branch se
-            git fetch origin
-            git checkout main
-            git pull origin main
+            # ✅ create/update .env file from secret
+            echo "${ENV_CONTENT}" > .env
 
-            # Node packages install/update karo
-            npm install
+            # build new image
+            docker build -t ludo-server:latest .
 
-            # Server restart karo using :contentReference[oaicite:1]{index=1} (agar pehle se running ho to restart, warna start)
-            npx pm2 restart all || npx pm2 start server.js --name "ludo-server"
+            # stop & remove old container
+            docker stop ludo-server || true
+            docker rm ludo-server || true
+
+            # run new container with restart policy and env-file
+            docker run -d --name ludo-server --restart unless-stopped \
+              -p 3000:3000 --env-file /home/ubuntu/Ludogame2-Backend/.env \
+              ludo-server:latest
+
+            # cleanup old unused images
+            docker image prune -a -f
