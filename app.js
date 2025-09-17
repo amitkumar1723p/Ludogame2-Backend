@@ -28,7 +28,7 @@ const app = express();
 dotenv.config();
 // CORS middleware apply करते हैं (हर जगह से access की इजाज़त)
 app.use(cors());
-
+console.log('🔍 ENV from container:', process.env);
 // ✅ Test GET API route
 app.get('/health', (req, res) => {
   res.status(200).json({
