@@ -22,21 +22,20 @@ jobs:
           script: |
             cd /home/ubuntu/Ludogame2-Backend
 
-            # 📝 Step 1: create/update .env from secret
+            #  create/update .env from secret
             echo "${ENV_CONTENT}" > .env
-            cat .env   # debug - just to confirm
+            cat .env  # debug
 
-            # 📝 Step 2: build new image
+            # build new image
             docker build -t ludo-server:latest .
 
-            # 📝 Step 3: stop & remove old container
+            # stop & remove old container
             docker stop ludo-server || true
             docker rm ludo-server || true
 
-            # 📝 Step 4: run new container with .env file mounted
+            # run new container with .env file
             docker run -d --name ludo-server --restart unless-stopped \
               -p 3000:3000 --env-file /home/ubuntu/Ludogame2-Backend/.env \
               ludo-server:latest
 
-            # 📝 Step 5: clean old images
             docker image prune -a -f
