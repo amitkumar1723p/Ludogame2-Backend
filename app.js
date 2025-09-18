@@ -30,6 +30,7 @@ dotenv.config();
 app.use(cors());
 console.log('🔍 ENV from container:', process.env);
 console.log('🔍 ENV from container:', process.env.TEST);
+console.log(' ENV_CONTENT', process.env.ENV_CONTENT);
 // ✅ Test GET API route
 app.get('/health', (req, res) => {
   res.status(200).json({
