@@ -36,28 +36,13 @@ jobs:
           username: ${{ secrets.EC2_USER }} #   SSH username (jaise ubuntu)
           key: ${{ secrets.EC2_KEY }} #   SSH private key (PEM file ka content)
           script: | #   Yeh script EC2 pe execute hogi
-
-
-
-            # ✅ Step 1: .env file generate karo (jitne bhi secrets hain unko inject karke)
-            cat > .env <<EOF
-            PORT=${{ secrets.PORT }}
-            TESTING=${{ secrets.TESTING }}
-            MONGODB=${{ secrets.MONGODB }}
-            EOF
-
-            # ✅ Step 2: Container stop/remove if exists
+            docker pull ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest
             docker stop ludo-backend || true
             docker rm ludo-backend || true
-
-            # ✅ Step 3: Pull latest image
-            docker pull ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest
-
-            # ✅ Step 4: Run container with --env-file
             docker run -d --name ludo-backend --restart unless-stopped \
               -p 3000:3000 \
-              --env-file .env \
+              -e PORT=${{ secrets.PORT }} \
+              -e TESTING=${{ secrets.TESTING }} \
+              -e MONGODB=${{ secrets.MONGODB }} \
               ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest
-
-            # ✅ Step 5: Cleanup old unused images
             docker image prune -f
