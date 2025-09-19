@@ -33,7 +33,7 @@ app.use(cors());
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'success',
-    message: `new Backend- is running! ${process.env.TESTING} AND MONGO DB URL IS ${process.env.MONGODB} add change pipelinne`,
+    message: `new Backend- is running! ${process.env.TESTING} AND MONGO DB URL IS ${process.env.MONGODB} add change pipelinn`,
     timestamp: new Date(),
   });
 });
