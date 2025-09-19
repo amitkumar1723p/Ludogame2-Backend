@@ -28,14 +28,12 @@ const app = express();
 dotenv.config();
 // CORS middleware apply करते हैं (हर जगह से access की इजाज़त)
 app.use(cors());
-console.log('🔍 ENV from container:', process.env);
-console.log('🔍 ENV from container:', process.env.TEST);
-console.log(' ENV_CONTENT', process.env.ENV_CONTENT);
+
 // ✅ Test GET API route
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'success',
-    message: `new Backend- is running! ${process.env.TEST} (add new piple  for env varialbe )`,
+    message: `new Backend- is running! ${process.env.TESTING} AND MONGO DB URL IS ${process.env.MONGODB}`,
     timestamp: new Date(),
   });
 });

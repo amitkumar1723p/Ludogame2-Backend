@@ -84,6 +84,7 @@ jobs:
             docker run -d --name ludo-backend --restart unless-stopped \
               -p 3000:3000 \
               -e PORT=${{ secrets.PORT }} \
-              -e TEST=${{ secrets.TEST }} \
+              -e TESTING=${{ secrets.TESTING }} \
+              -e MONGODB=${{ secrets.MONGODB }} \
               ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest
             docker image prune -f
