@@ -1,41 +1,101 @@
-name: Docker Deploy to EC2
+# name: Docker Deploy to EC2
+
+# on:
+#   push:
+#     branches: [main]
+
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v3
+
+#       - name: Deploy to EC2 (build & run docker)
+#         uses: appleboy/ssh-action@v0.1.10
+#         with:
+#           host: ${{ secrets.EC2_HOST }}
+#           username: ${{ secrets.EC2_USER }}
+#           key: ${{ secrets.EC2_KEY }}
+#           envs: ENV_CONTENT
+#           script: |
+#             cd /home/ubuntu/Ludogame2-Backend
+
+#             #  create/update .env from secret
+#             echo "${ENV_CONTENT}" > .env
+#             cat .env  # debug
+
+#             # build new image
+#             docker build -t ludo-server:latest .
+
+#             # stop & remove old container
+#             docker stop ludo-server || true
+#             docker rm ludo-server || true
+
+#             # run new container with .env file
+#             docker run -d --name ludo-server --restart unless-stopped \
+#               -p 3000:3000 --env-file /home/ubuntu/Ludogame2-Backend/.env \
+#               ludo-server:latest
+
+#             docker image prune -a -f
+
+name: Deploy Ludo Backend # 👉 Pipeline ka naam
 
 on:
   push:
-    branches: [main]
+    branches: [main] # 👉 Jab bhi main branch pe push hoga, yeh pipeline trigger hogi
 
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-
+  build: # 👉 Pehla job: Docker image build & push
+    runs-on: ubuntu-latest # 👉 Job ek fresh Ubuntu runner pe chalega
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Checkout Source
+        uses: actions/checkout@v4 # 👉 Repo ka latest code checkout karega
 
-      - name: Deploy to EC2 (build & run docker)
-        uses: appleboy/ssh-action@v0.1.10
+      - name: Login to Docker Hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+        # 👉 DockerHub me login karne ke liye GitHub secrets use karega
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest .
+        # 👉 Docker image build karega aur "latest" tag ke sath banayega
+
+      - name: Push Docker Image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest
+        # 👉 Banayi gayi image ko DockerHub pe push karega
+
+  deploy: # 👉 Dusra job: Deploy on EC2
+    needs: build # 👉 Yeh job tab chalega jab build job complete ho jayega
+    runs-on: ubuntu-latest # 👉 Yeh bhi ek Ubuntu runner pe chalega
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.10 # 👉 GitHub Action jo SSH se EC2 connect karta hai
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_KEY }}
-          envs: ENV_CONTENT
-          script: |
-            cd /home/ubuntu/Ludogame2-Backend
+          host: ${{ secrets.EC2_HOST }} # 👉 EC2 ka public IP (GitHub secret me store hai)
+          username: ${{ secrets.EC2_USER }} # 👉 SSH username (jaise ubuntu)
+          key: ${{ secrets.EC2_KEY }} # 👉 SSH private key (PEM file ka content)
+          script: | # 👉 Yeh script EC2 pe execute hogi
+            docker pull ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest
+            # 👉 DockerHub se latest image pull karega
 
-            #  create/update .env from secret
-            echo "${ENV_CONTENT}" > .env
-            cat .env  # debug
+            docker stop ludo-backend || true
+            docker rm ludo-backend || true
+            # 👉 Agar purana container chal raha hai to usko stop & remove kar dega
 
-            # build new image
-            docker build -t ludo-server:latest .
+            docker run -d --name ludo-backend --restart unless-stopped \
+              -p 3000:3000 \ # 👉 Host port 3000 ko container ke port 3000 se map karega
+              -e PORT=${{ secrets.PORT }} \ # 👉 Secrets se environment variable inject karega
+              -e TEST=${{ secrets.TEST }} \
+              # -e DB_URI=${{ secrets.DB_URI }} \
+              # -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              # -e CLOUDINARY_NAME=${{ secrets.CLOUDINARY_NAME }} \
+              # -e CLOUDINARY_API_KEY=${{ secrets.CLOUDINARY_API_KEY }} \
+              # -e CLOUDINARY_API_SECRET=${{ secrets.CLOUDINARY_API_SECRET }} \
+              ${{ secrets.DOCKER_USERNAME }}/ludo-backend:latest
+            # 👉 Naya container run karega aur env vars pass karega
 
-            # stop & remove old container
-            docker stop ludo-server || true
-            docker rm ludo-server || true
-
-            # run new container with .env file
-            docker run -d --name ludo-server --restart unless-stopped \
-              -p 3000:3000 --env-file /home/ubuntu/Ludogame2-Backend/.env \
-              ludo-server:latest
-
-            docker image prune -a -f
+            docker image prune -f
+            # 👉 Purane unused images ko delete karega (storage clean rakhne ke liye)
