@@ -1,21 +1,19 @@
 // RoomManager को import कर रहे हैं — जो room बनाने, जोड़ने, हटाने का काम करता है
 import { RoomManager } from '../modals/roomModel.js';
 
-
 // 🔹 जब कोई client (player) game में connect होता है
-const joinRoom = (io, socket, { roomId, isNew, maxPlayers, PlayerName }, callback) => {
-  console.log()
-
+const joinRoom = (
+  io,
+  socket,
+  { roomId, isNew, maxPlayers, PlayerName },
+  callback
+) => {
   let room;
 
-
-
   if (isNew) {
-
     // 🔸 नया room बनाना है — player host होगा
     room = RoomManager.createRoom(socket.id, maxPlayers || 4, PlayerName);
   } else {
-
     // 🔸 Existing room में player को जोड़ना है
     room = RoomManager.addPlayer(roomId, socket.id, PlayerName);
     // अगर room नहीं मिला या full है
@@ -29,67 +27,51 @@ const joinRoom = (io, socket, { roomId, isNew, maxPlayers, PlayerName }, callbac
   socket.roomId = room.id;
   // 🔸 सभी players को room का latest status भेजो
   io.to(room.id).emit('roomUpdate', {
-    roomId: room.id,                  // Room ID
-    players: room.players,            // कौन-कौन players हैं
-    maxPlayers: room.maxPlayers       // max कितने players allowed हैं
+    roomId: room.id, // Room ID
+    players: room.players, // कौन-कौन players हैं
+    maxPlayers: room.maxPlayers, // max कितने players allowed हैं
   });
 
   // 🔸 Frontend को successful join का जवाब
   callback({ success: true, room });
 };
 
-
-
-
-
-
 // 🔹 जब कोई player disconnect हो जाता है या बाहर निकलता है
 const leaveRoom = async (io, socket, { roomId }) => {
-
   let UserroomId;
   if (!roomId) {
     const rooms = [...socket.rooms];
-    const roomIds = rooms.filter(r => r !== socket.id); // ✅ socket.id hatao
+    const roomIds = rooms.filter((r) => r !== socket.id); // ✅ socket.id hatao
     const myroomId = roomIds[0]; // ✅ actual roomId/ ✅ actual roomId
 
-    UserroomId = myroomId
-
+    UserroomId = myroomId;
   } else {
-    UserroomId = roomId
+    UserroomId = roomId;
   }
-
-
-
-
-
-
-
 
   let room = await RoomManager.getRoom(UserroomId);
 
-
-
-
   if (!room) {
-
     socket.emit('error', { message: 'Room not Found' });
-    return
+    return;
   }
 
   // उस player को room से remove करो
-  let { room: RomData, RemovePlayerData } = RoomManager.removePlayer(socket.id) || {};
-  console.log(RomData, "RomData")
-
+  let { room: RomData, RemovePlayerData } =
+    RoomManager.removePlayer(socket.id) || {};
+  console.log(RomData, 'RomData');
 
   if (!RomData) {
-    socket.emit('error', { message: 'Room not found or empty after player left' });
+    socket.emit('error', {
+      message: 'Room not found or empty after player left',
+    });
     return;
   }
 
   // अगर केवल 1 player बचा है → उसे Winner बना दो
   if (RomData?.players?.length === 1) {
     const winnerPlayer = RomData.players[0];
-    io.to(RomData.id).emit("gameOver", {
+    io.to(RomData.id).emit('gameOver', {
       winnerPlayer: winnerPlayer,
       message: `${winnerPlayer.PlayerName} जीत गया क्योंकि बाकी player ने game छोड़ दिया!`,
     });
@@ -100,10 +82,10 @@ const leaveRoom = async (io, socket, { roomId }) => {
   }
 
   if (RomData?.players?.length == 0) {
-    return
+    return;
   }
 
-  const hasHost = RomData?.players?.some(p => p.host === true);
+  const hasHost = RomData?.players?.some((p) => p.host === true);
   // अगर host गया तो नया host assign करो
   if (!hasHost) {
     RomData.players[0].host = true;
@@ -113,46 +95,36 @@ const leaveRoom = async (io, socket, { roomId }) => {
 
   // Notify all players
   io.to(RomData.id).emit('playerLeft', {
-    currentPlayers: RomData.players,          // updated players list
-    message: "एक player game छोड़ गया",
-    removePlayer: RemovePlayerData
+    currentPlayers: RomData.players, // updated players list
+    message: 'एक player game छोड़ गया',
+    removePlayer: RemovePlayerData,
   });
 
   socket.leave(RomData.id);
-
 };
 
-
-
-
-
-
-
-
-
-//  Start Game 
+//  Start Game
 const startGame = async (io, socket, { roomId, move }) => {
   try {
     // 1. Room data fetch karo
     const room = await RoomManager.getRoom(roomId);
-    console.log(room, "startGame")
+    console.log(room, 'startGame');
     // 2. Check karo kya players ready hain
     if (!room) {
-
-      socket.emit('error', { message: 'Romm Avaliable nahi hai phel room crate karo' });
-      return
+      socket.emit('error', {
+        message: 'Romm Avaliable nahi hai phel room crate karo',
+      });
+      return;
     }
     if (room?.players?.length < 2) {
       socket.emit('error', { message: 'कम से कम 2 players चाहिए!' });
       return;
     }
 
-
-
     // agar only two player hai  toh seccond player ki postion ko third karna hai
 
     if (room.players.length === 2) {
-      room.players = room.players.map(player => {
+      room.players = room.players.map((player) => {
         if (player.position === 2) {
           return { ...player, position: 3 }; // ✅ position update
         }
@@ -160,43 +132,38 @@ const startGame = async (io, socket, { roomId, move }) => {
       });
     }
 
-
-
     // 4. Sab players ko broadcast karo
     io.to(roomId).emit('game-started', {
       players: room.players,
       roomId,
       message: 'Game शुरू हो गया!',
     });
-
-
   } catch (error) {
     console.error('Error starting game:', error);
     socket.emit('error', { message: 'Game start failed!' });
   }
-
-}
-
-
+};
 
 // 🔹 जब कोई client refresh ke baad game me wapas aata hai
 const rejoinRoom = (io, socket, { roomId, playerId }) => {
   // 1. Room ko fetch karo
   const room = RoomManager.getRoom(roomId);
 
-
   // 2. Agar room exist nahi karta toh error bhejo
   if (!room) {
-    socket.emit('error', { message: 'Room exist nahi karta ya expire ho gaya' });
+    socket.emit('error', {
+      message: 'Room exist nahi karta ya expire ho gaya',
+    });
     return;
   }
 
   // 3. Agar player room me nahi hai, toh usse add karo
-  const alreadyPresent = room.players.some(p => p.PlayerSocketId === playerId);
+  const alreadyPresent = room.players.some(
+    (p) => p.PlayerSocketId === playerId
+  );
   if (!alreadyPresent) {
-    room.players.push({ PlayerSocketId: playerId, PlayerName: "Rejoined" });
+    room.players.push({ PlayerSocketId: playerId, PlayerName: 'Rejoined' });
   }
-
 
   // 4. Current socket ko room me join karwao (socket.io ka join)
   socket.join(roomId);
@@ -205,7 +172,7 @@ const rejoinRoom = (io, socket, { roomId, playerId }) => {
   io.to(roomId).emit('roomUpdate', {
     roomId: room.id,
     players: room.players,
-    maxPlayers: room.maxPlayers
+    maxPlayers: room.maxPlayers,
   });
 
   // // 6. Agar game already start ho chuka hai (moves exist karein)
@@ -216,48 +183,37 @@ const rejoinRoom = (io, socket, { roomId, playerId }) => {
   //     message: 'Game already chalu hai — reconnect ho gaya!',
   //   });
   // }
-
-
 };
 
-
-
-const diceRolled = (io, socket, { roomId, playerNo, PlayerSocketId, diceNo }) => {
-
-
-
-  const room = RoomManager.getRoom(roomId);   // उस room को find करो
+const diceRolled = (
+  io,
+  socket,
+  { roomId, playerNo, PlayerSocketId, diceNo }
+) => {
+  const room = RoomManager.getRoom(roomId); // उस room को find करो
 
   if (!room) {
-
     socket.emit('error', { message: 'Room not Found restart game again' });
     return;
   }
 
-
-
   // ✅ Broadcast dice rolling animation first
   io.to(roomId).emit('diceRolling', {
     playerNo,
-    PlayerSocketId
+    PlayerSocketId,
   });
   // Then after 1 second delay, send diceRolled with value
   setTimeout(() => {
     io.to(roomId).emit('diceRolled', {
-      playerNo,    // Position (e.g. 1 or 2)
-      diceNo,      // Rolled dice number
-      PlayerSocketId
+      playerNo, // Position (e.g. 1 or 2)
+      diceNo, // Rolled dice number
+      PlayerSocketId,
     });
   }, 1000);
 };
 
-
-
-
-
 // 🔄 Add new: Handle nextTurn update from frontend
 const updateNextTurn = (io, socket, { roomId, chancePlayer }) => {
-
   const room = RoomManager.getRoom(roomId);
   if (!room) {
     socket.emit('error', { message: 'Room not found for nextTurn:' });
@@ -265,9 +221,11 @@ const updateNextTurn = (io, socket, { roomId, chancePlayer }) => {
     return;
   }
 
-  const index = room.players.findIndex(p => p.position === chancePlayer);
+  const index = room.players.findIndex((p) => p.position === chancePlayer);
   if (index === -1) {
-    console.log(`❌ Player with position ${chancePlayer} not found in room ${roomId}`);
+    console.log(
+      `❌ Player with position ${chancePlayer} not found in room ${roomId}`
+    );
     return;
   }
 
@@ -275,29 +233,25 @@ const updateNextTurn = (io, socket, { roomId, chancePlayer }) => {
 
   // 📢 Notify all players
   io.to(roomId).emit('nextTurn', {
-    chancePlayer
+    chancePlayer,
   });
 };
 
 const enablePileSelection = (io, socket, { roomId, playerNo }) => {
-
   const room = RoomManager.getRoom(roomId);
   if (!room) {
-    socket.emit('error', { message: 'Room not found for enablePileSelection:' });
+    socket.emit('error', {
+      message: 'Room not found for enablePileSelection:',
+    });
     return;
   }
 
-
-
-
-
   // 📢 Notify all players
   io.to(roomId).emit('enablePileSelection', {
-    playerNo
+    playerNo,
   });
 };
 const enableCellSelection = (io, socket, { roomId, playerNo }) => {
-
   const room = RoomManager.getRoom(roomId);
   if (!room) {
     socket.emit('error', { message: 'Room not found for enableCellSelection' });
@@ -307,25 +261,30 @@ const enableCellSelection = (io, socket, { roomId, playerNo }) => {
 
   // 📢 Notify all players
   io.to(roomId).emit('enableCellSelection', {
-    playerNo
+    playerNo,
   });
 };
-const pileEnableFromPocket = (io, socket, { roomId, playerNo, pieceId, pos, travelCount }) => {
-
+const pileEnableFromPocket = (
+  io,
+  socket,
+  { roomId, playerNo, pieceId, pos, travelCount }
+) => {
   const room = RoomManager.getRoom(roomId);
   if (!room) {
-    socket.emit('error', { message: 'Room not found for pileEnableFromPocket:' });
+    socket.emit('error', {
+      message: 'Room not found for pileEnableFromPocket:',
+    });
     return;
   }
 
   io.to(roomId).emit('PileEnableFromPocket', {
-    playerNo, pieceId, pos, travelCount
+    playerNo,
+    pieceId,
+    pos,
+    travelCount,
   });
-
-
-}
+};
 const handleForwardThunk = (io, socket, { roomId, playerNo, pieceId, id }) => {
-
   const room = RoomManager.getRoom(roomId);
   if (!room) {
     socket.emit('error', { message: 'Room not found for handleForwardThunk:' });
@@ -334,11 +293,22 @@ const handleForwardThunk = (io, socket, { roomId, playerNo, pieceId, id }) => {
   }
 
   io.to(roomId).emit('handleForwardThunk', {
-    playerNo, pieceId, id
+    playerNo,
+    pieceId,
+    id,
   });
-
-}
-
+};
 
 // 🔚 बाकी files से import करने के लिए export कर रहे हैं
-export { joinRoom, leaveRoom, startGame, rejoinRoom, diceRolled, updateNextTurn, enablePileSelection, enableCellSelection, pileEnableFromPocket, handleForwardThunk };
+export {
+  joinRoom,
+  leaveRoom,
+  startGame,
+  rejoinRoom,
+  diceRolled,
+  updateNextTurn,
+  enablePileSelection,
+  enableCellSelection,
+  pileEnableFromPocket,
+  handleForwardThunk,
+};
