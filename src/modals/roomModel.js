@@ -16,8 +16,8 @@ class Room {
 
 // 🔹 Global object — सभी active game rooms यहाँ store होंगे
 const rooms = {};
-console.log(rooms, 'Print Globally Room');
 
+console.log(rooms, 'Print Globally Room');
 // 🔸 RoomManager: सारे room से जुड़ा logic और handling करेगा
 class RoomManager {
   // ✅ नया room create करो

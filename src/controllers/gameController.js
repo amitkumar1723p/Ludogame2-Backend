@@ -21,6 +21,7 @@ const joinRoom = (
       return callback({ error: 'Room not found or already full' });
     }
   }
+  console.log(room, 'create and join function');
 
   // इस socket को उस room में officially जोड़ दो
   socket.join(room.id);
@@ -109,6 +110,7 @@ const startGame = async (io, socket, { roomId, move }) => {
     // 1. Room data fetch karo
     const room = await RoomManager.getRoom(roomId);
     console.log(room, 'startGame');
+
     // 2. Check karo kya players ready hain
     if (!room) {
       socket.emit('error', {
@@ -148,6 +150,7 @@ const startGame = async (io, socket, { roomId, move }) => {
 const rejoinRoom = (io, socket, { roomId, playerId }) => {
   // 1. Room ko fetch karo
   const room = RoomManager.getRoom(roomId);
+  console.log(room, 'room rejoin room');
 
   // 2. Agar room exist nahi karta toh error bhejo
   if (!room) {
