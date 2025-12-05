@@ -97,10 +97,9 @@ io.on('connection', (socket) => {
   socket.on('handleForwardThunk', (data) =>
     handleForwardThunk(io, socket, data)
   );
-  socket.on('disconnecting', (data) => leaveRoom(io, socket, data));
-  // socket.on('disconnect', (data, callback)  =>{
-
-  //     console.log("❌ Player disconnected:", socket.id);
+  // socket.on('disconnecting', (data) => leaveRoom(io, socket, data));
+  // socket.on('disconnect', (data, callback) => {
+  //   console.log('❌ Player disconnected:', socket.id);
   // });
 });
 
